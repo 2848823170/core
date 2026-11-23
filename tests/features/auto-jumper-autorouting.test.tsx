@@ -51,6 +51,17 @@ test("board with auto_jumper autorouter for single layer with crossing traces", 
       (p) => p.source_component_id === jumperComponent!.source_component_id,
     )
   expect(jumperSourcePorts.length).toBe(8) // 1206x4 jumper has 8 pads
+  expect(
+    circuit.db.source_trace
+      .list()
+      .some((sourceTrace) =>
+        sourceTrace.connected_source_port_ids.some((sourcePortId) =>
+          jumperSourcePorts.some(
+            (sourcePort) => sourcePort.source_port_id === sourcePortId,
+          ),
+        ),
+      ),
+  ).toBe(true)
 
   // Verify pcb_ports exist for the jumper
   const jumperPcbComponent = circuit.db.pcb_component

@@ -121,6 +121,26 @@ export function insertAutoplacedJumpers(params: {
         pin_number: pinNumber,
       })
 
+      // The router declares each jumper pad's intended net in connectedTo.
+      // Record that intent before PCB endpoint references are validated.
+      for (const sourceId of new Set(pad.connectedTo ?? [])) {
+        const sourceTrace = db.source_trace.get(sourceId)
+        if (sourceTrace) {
+          db.source_trace.update(sourceId, {
+            connected_source_port_ids: [
+              ...sourceTrace.connected_source_port_ids,
+              sourcePort.source_port_id,
+            ],
+          })
+        } else if (db.source_net.get(sourceId)) {
+          db.source_trace.insert({
+            connected_source_port_ids: [sourcePort.source_port_id],
+            connected_source_net_ids: [sourceId],
+            subcircuit_id: subcircuit_id ?? undefined,
+          })
+        }
+      }
+
       // Get layer from pad - may be `layer` string or `layers` array
       const padLayer = pad.layer || pad.layers?.[0] || "top"
 

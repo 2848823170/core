@@ -5,8 +5,9 @@ import type {
   PcbSmtPad,
   PcbTrace,
   SourcePort,
+  SourceTrace,
 } from "circuit-json"
-import { getFullConnectivityMapFromCircuitJson } from "circuit-json-to-connectivity-map"
+import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { SimplifiedPcbTrace } from "lib/utils/autorouting/SimpleRouteJson"
 import { applyToPoint, rotateDEG } from "transformation-matrix"
 
@@ -262,6 +263,18 @@ function getSourcePortIdsFromRoutedTrace(
   return getEndpointSourcePortIdsFromGeometry(db, trace)
 }
 
+function buildSourceConnectivityMap(sourceTraces: SourceTrace[]) {
+  const connMap = new ConnectivityMap({})
+  connMap.addConnections(
+    sourceTraces.map((trace) => [
+      trace.source_trace_id,
+      ...trace.connected_source_port_ids,
+      ...trace.connected_source_net_ids,
+    ]),
+  )
+  return connMap
+}
+
 export function getSourceTraceIdForRoutedTrace({
   db,
   trace,
@@ -272,14 +285,14 @@ export function getSourceTraceIdForRoutedTrace({
   subcircuit_id?: string | null
 }) {
   const sourceTraces = db.source_trace.list()
-  const connMap = getFullConnectivityMapFromCircuitJson(db.toArray())
+  const connMap = buildSourceConnectivityMap(sourceTraces)
   const declaredSourcePortIds = getDeclaredSourcePortIdsFromRoutedTrace(
     db,
     trace,
   )
   const declaredEndpointNetIds = new Set(
-    [...declaredSourcePortIds, trace.source_trace_id].flatMap((sourceId) => {
-      const netId = sourceId && connMap.getNetConnectedToId(sourceId)
+    declaredSourcePortIds.flatMap((sourceId) => {
+      const netId = connMap.getNetConnectedToId(sourceId)
       return netId ? [netId] : []
     }),
   )
